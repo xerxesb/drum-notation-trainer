@@ -8,10 +8,23 @@ export function generateQuestions(level) {
   return questions.slice(0, level.questionsPerRound)
 }
 
+// Visual twins: notes that look identical on the staff and must always appear
+// together in the choices so the player can actually distinguish them.
+const VISUAL_TWINS = {
+  snare: 'ghost_snare',
+  ghost_snare: 'snare',
+  hihat_closed: 'hihat_open',
+  hihat_open: 'hihat_closed',
+}
+
 export function generateChoices(correctId, levelNotes, choiceCount) {
-  const others = levelNotes.filter(id => id !== correctId)
+  const twin = VISUAL_TWINS[correctId]
+  // Always include the twin if it's in the level's note pool
+  const mustInclude = twin && levelNotes.includes(twin) ? [twin] : []
+  const others = levelNotes.filter(id => id !== correctId && !mustInclude.includes(id))
   const shuffled = others.sort(() => Math.random() - 0.5)
-  const choices = [correctId, ...shuffled.slice(0, choiceCount - 1)]
+  const fillerCount = choiceCount - 1 - mustInclude.length
+  const choices = [correctId, ...mustInclude, ...shuffled.slice(0, fillerCount)]
   return choices.sort(() => Math.random() - 0.5)
 }
 

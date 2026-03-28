@@ -5,12 +5,12 @@
 //   Middle line (snare): y = 56
 //   getY(pos) = 56 - pos * 6   (pos 0 = snare, +ve = up, -ve = down)
 
-const MIDDLE_Y = 56
+const MIDDLE_Y = 62        // shifted down 6px so crash/accent fits above
 const HALF_SPACE = 6
 const NOTE_X = 175
 const STAFF_X_START = 68
 const STAFF_X_END = 300
-const STAFF_LINES = [32, 44, 56, 68, 80]
+const STAFF_LINES = [38, 50, 62, 74, 86]
 
 const getY = (position) => MIDDLE_Y - position * HALF_SPACE
 

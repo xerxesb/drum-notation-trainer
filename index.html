@@ -104,7 +104,48 @@ body {
   line-clamp: 2;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+.app-footer {
+  margin-top: auto;
+  padding-top: 18px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.app-footer-author {
+  color: var(--text);
+  font-weight: 700;
+}
+.app-footer-copy {
+  letter-spacing: .2px;
+}
  
+/* ── Difficulty Picker ── */
+.diff-screen { align-items: center; justify-content: center; gap: 20px; text-align: center; }
+.diff-screen h2 { font-size: 22px; font-weight: 800; }
+.diff-level-info { font-size: 14px; color: var(--muted); }
+.diff-list { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.diff-card {
+  background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--radius);
+  padding: 16px; text-align: left; cursor: pointer; color: var(--text);
+  transition: transform .12s, border-color .12s; width: 100%; font-family: inherit;
+  display: flex; align-items: center; gap: 14px;
+}
+.diff-card:active { transform: scale(.97); }
+.diff-card:hover { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(79,142,247,.2); }
+.diff-emoji { font-size: 28px; line-height: 1; flex-shrink: 0; }
+.diff-info { flex: 1; }
+.diff-name { font-size: 17px; font-weight: 700; }
+.diff-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.diff-score { font-size: 11px; color: var(--green); margin-top: 4px; }
+.diff-score.no-score { color: var(--muted); }
+.diff-back { margin-top: 4px; }
+
+/* ── Lives Display ── */
+.lives-display { font-size: 16px; letter-spacing: 2px; line-height: 1; }
+.lives-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.game-over-banner { background: rgba(231,76,60,.15); border: 1px solid var(--red); border-radius: var(--radius-sm); padding: 10px 20px; color: var(--red); font-size: 14px; font-weight: 600; width: 100%; text-align: center; }
+
 /* ── Game Screen ── */
 .game-screen { gap: 10px; padding-top: max(12px, env(safe-area-inset-top)); }
 .game-header { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -134,8 +175,8 @@ body {
 .feedback-desc { font-size: 13px; color: var(--muted); text-align: center; line-height: 1.4; padding: 0 8px; min-height: 36px; }
 .choices { display: grid; gap: 8px; flex: 1; }
 .choices.n3 { grid-template-columns: 1fr 1fr 1fr; }
-.choices.n4, .choices.n5, .choices.n6 { grid-template-columns: 1fr 1fr; }
-.choices.n5 .choice-btn:last-child { grid-column: 1 / -1; }
+.choices.n4, .choices.n5, .choices.n6, .choices.n7, .choices.n8 { grid-template-columns: 1fr 1fr; }
+.choices.n5 .choice-btn:last-child, .choices.n7 .choice-btn:last-child { grid-column: 1 / -1; }
 .choice-btn {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   padding: 12px 8px; background: var(--bg-card); border: 1.5px solid var(--border);
@@ -244,6 +285,12 @@ const LEVELS = [
   { id:4, name:'Expert',       emoji:'🔥', subtitle:'Master the Details', description:'Ghost notes and hi-hat foot — the subtle elements that make grooves come alive.',    notes:['bass_drum','snare','hihat_closed','crash','floor_tom','high_tom','ride','mid_tom','hihat_open','ghost_snare','hihat_foot'], choiceCount:6, timeLimit:8, questionsPerRound:15, pointsPerCorrect:250, passingScore:2800 },
 ];
  
+const DIFFICULTIES = [
+  { id:'easy',   name:'Easy',   emoji:'😊', timeMult:1.0, choiceAdd:0, lives:3, description:'3 lives · Full time' },
+  { id:'medium', name:'Medium', emoji:'😤', timeMult:0.7, choiceAdd:1, lives:2, description:'2 lives · Less time · +1 choice' },
+  { id:'hard',   name:'Hard',   emoji:'🔥', timeMult:0.5, choiceAdd:2, lives:0, description:'0 lives · Half time · +2 choices' },
+];
+
 // ─────────────────────────────────────────────
 // GAME LOGIC
 // ─────────────────────────────────────────────
@@ -277,11 +324,12 @@ function generateQuestions(level) {
   return q.slice(0, level.questionsPerRound);
 }
  
-function generateChoices(correctId, level) {
+function generateChoices(correctId, level, choiceCount) {
+  const count = choiceCount || level.choiceCount;
   const twin = VISUAL_TWINS[correctId];
   const mustHave = twin && level.notes.includes(twin) ? [twin] : [];
   const others = shuffle(level.notes.filter(id => id !== correctId && !mustHave.includes(id)));
-  const filler = level.choiceCount - 1 - mustHave.length;
+  const filler = count - 1 - mustHave.length;
   return shuffle([correctId, ...mustHave, ...others.slice(0, filler)]);
 }
  
@@ -293,28 +341,55 @@ function streakMultiplier(streak) {
 }
  
 function calcPoints(timeLeft, level, streak) {
-  const speed = Math.floor((timeLeft / level.timeLimit) * level.pointsPerCorrect * .5);
+  const tl = state.effectiveTime || level.timeLimit;
+  const speed = Math.floor((timeLeft / tl) * level.pointsPerCorrect * .5);
   return Math.floor((level.pointsPerCorrect + speed) * streakMultiplier(streak));
 }
  
 function loadHighScores() {
-  try { return JSON.parse(localStorage.getItem(HIGH_SCORE_KEY) || '{}'); } catch { return {}; }
+  let hs;
+  try { hs = JSON.parse(localStorage.getItem(HIGH_SCORE_KEY) || '{}'); } catch { return {}; }
+  // Migrate old format (numeric keys like {1:600}) → new format ("1-easy":600)
+  let migrated = false;
+  for (const key of Object.keys(hs)) {
+    if (/^\d+$/.test(key)) {
+      hs[key + '-easy'] = hs[key];
+      delete hs[key];
+      migrated = true;
+    }
+  }
+  if (migrated) try { localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(hs)); } catch {}
+  return hs;
 }
- 
-function saveHighScore(levelId, score) {
+
+function scoreKey(levelId, diffId) { return levelId + '-' + diffId; }
+
+function saveHighScore(levelId, diffId, score) {
   const hs = loadHighScores();
-  if (!hs[levelId] || score > hs[levelId]) {
-    hs[levelId] = score;
+  const k = scoreKey(levelId, diffId);
+  if (!hs[k] || score > hs[k]) {
+    hs[k] = score;
     try { localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(hs)); } catch {}
     return true;
   }
   return false;
 }
- 
+
+function getBestForLevel(hs, levelId) {
+  // Best score across all difficulties for a level
+  let best = null;
+  for (const diff of DIFFICULTIES) {
+    const s = hs[scoreKey(levelId, diff.id)];
+    if (s != null && (best == null || s > best)) best = s;
+  }
+  return best;
+}
+
 function getUnlockedLevel(hs) {
   let u = 1;
   for (const lv of LEVELS) {
-    if (hs[lv.id] != null && hs[lv.id] >= lv.passingScore) u = Math.min(lv.id + 1, LEVELS.length);
+    const best = getBestForLevel(hs, lv.id);
+    if (best != null && best >= lv.passingScore) u = Math.min(lv.id + 1, LEVELS.length);
     else break;
   }
   return u;
@@ -410,8 +485,12 @@ function buildStaffSVG(note) {
 // STATE
 // ─────────────────────────────────────────────
 const state = {
-  screen: 'start',
+  screen: 'start',       // 'start' | 'difficulty' | 'game' | 'result'
   level: null,
+  difficulty: null,
+  selectedLevel: null,    // set when picking difficulty
+  effectiveTime: 0,       // computed timeLimit for current game
+  effectiveChoices: 0,    // computed choiceCount for current game
   questions: [],
   qIndex: 0,
   choices: [],
@@ -420,6 +499,9 @@ const state = {
   streak: 0,
   maxStreak: 0,
   correctCount: 0,
+  mistakes: 0,
+  lives: 0,
+  gameOver: false,        // true when lives exhausted
   feedback: null,   // null | { correct, selectedId, correctId, points }
   result: null,
   timerInterval: null,
@@ -439,6 +521,10 @@ function resetApp() {
   Object.assign(state, {
     screen: 'start',
     level: null,
+    difficulty: null,
+    selectedLevel: null,
+    effectiveTime: 0,
+    effectiveChoices: 0,
     questions: [],
     qIndex: 0,
     choices: [],
@@ -447,6 +533,9 @@ function resetApp() {
     streak: 0,
     maxStreak: 0,
     correctCount: 0,
+    mistakes: 0,
+    lives: 0,
+    gameOver: false,
     feedback: null,
     result: null,
   });
@@ -458,9 +547,10 @@ function resetApp() {
 // ─────────────────────────────────────────────
 function render() {
   const app = document.getElementById('app');
-  if (state.screen === 'start')  app.innerHTML = renderStart();
-  if (state.screen === 'game')   app.innerHTML = renderGame();
-  if (state.screen === 'result') app.innerHTML = renderResult();
+  if (state.screen === 'start')      app.innerHTML = renderStart();
+  if (state.screen === 'difficulty')  app.innerHTML = renderDifficulty();
+  if (state.screen === 'game')       app.innerHTML = renderGame();
+  if (state.screen === 'result')     app.innerHTML = renderResult();
   bindEvents();
 }
 
@@ -484,6 +574,14 @@ function renderReferenceLegend() {
       <div class="legend-grid">${cards}</div>
     </details>`;
 }
+
+function renderFooter() {
+  return `
+    <footer class="app-footer" aria-label="Author and copyright">
+      <div class="app-footer-author">Author: Xerxes Battiwalla</div>
+      <div class="app-footer-copy">&copy; 2026 Xerxes Battiwalla. All rights reserved.</div>
+    </footer>`;
+}
  
 function renderStart() {
   const hs = loadHighScores();
@@ -491,10 +589,10 @@ function renderStart() {
   const showReset = Object.keys(hs).length > 0;
   const cards = LEVELS.map(lv => {
     const isLocked = lv.id > unlocked;
-    const score = hs[lv.id];
-    const passed = score != null && score >= lv.passingScore;
-    const scoreHtml = score != null
-      ? `<div class="level-score">${passed ? '✓ Passed — ' : ''}Best: <strong>${score.toLocaleString()}</strong>${!passed ? ` (need ${lv.passingScore.toLocaleString()})` : ''}</div>`
+    const best = getBestForLevel(hs, lv.id);
+    const passed = best != null && best >= lv.passingScore;
+    const scoreHtml = best != null
+      ? `<div class="level-score">${passed ? '✓ Passed — ' : ''}Best: <strong>${best.toLocaleString()}</strong>${!passed ? ` (need ${lv.passingScore.toLocaleString()})` : ''}</div>`
       : `<div class="level-score no-score">Not played yet</div>`;
     return `
       <button class="level-card${isLocked?' locked':''}${passed?' passed':''}" data-level="${lv.id}" ${isLocked?'disabled':''}>
@@ -524,17 +622,54 @@ function renderStart() {
       ${renderReferenceLegend()}
       ${showReset ? '<div class="game-actions"><button class="btn btn-ghost" id="btn-reset-app">Reset App</button></div>' : ''}
       <p class="credits">Tap a level to start · Scores saved locally</p>
+      ${renderFooter()}
+    </div>`;
+}
+
+function renderDifficulty() {
+  const lv = state.selectedLevel;
+  const hs = loadHighScores();
+  const cards = DIFFICULTIES.map(diff => {
+    const effTime = Math.max(3, Math.floor(lv.timeLimit * diff.timeMult));
+    const effChoices = Math.min(lv.notes.length, lv.choiceCount + diff.choiceAdd);
+    const k = scoreKey(lv.id, diff.id);
+    const best = hs[k];
+    const scoreHtml = best != null
+      ? `<div class="diff-score">Best: <strong>${best.toLocaleString()}</strong></div>`
+      : `<div class="diff-score no-score">Not played</div>`;
+    const livesText = diff.lives === 0 ? 'No mistakes allowed' : diff.lives + (diff.lives === 1 ? ' life' : ' lives');
+    return `
+      <button class="diff-card" data-diff="${diff.id}">
+        <span class="diff-emoji">${diff.emoji}</span>
+        <div class="diff-info">
+          <div class="diff-name">${diff.name}</div>
+          <div class="diff-desc">${livesText} · ${effTime}s per Q · ${effChoices} choices</div>
+          ${scoreHtml}
+        </div>
+      </button>`;
+  }).join('');
+  return `
+    <div class="screen diff-screen">
+      <div>
+        <div class="result-emoji">${lv.emoji}</div>
+        <h2>${lv.name}</h2>
+        <div class="diff-level-info">${lv.subtitle} · ${lv.notes.length} notes</div>
+      </div>
+      <div class="diff-list">${cards}</div>
+      <button class="btn btn-ghost diff-back" id="btn-diff-back">← Back to Levels</button>
+      ${renderFooter()}
     </div>`;
 }
  
 function renderGame() {
   const lv = state.level;
+  const diff = state.difficulty;
   const note = DRUM_NOTES[state.questions[state.qIndex]];
-  const timerPct = (state.timeLeft / lv.timeLimit) * 100;
+  const timerPct = (state.timeLeft / state.effectiveTime) * 100;
   const warn = state.timeLeft <= 4;
   const mult = streakMultiplier(state.streak);
   const fb = state.feedback;
- 
+
   let promptHtml = 'What drum element is this?';
   let descHtml = '';
   if (fb) {
@@ -544,7 +679,7 @@ function renderGame() {
       : `<span class="bad">✗ That was the <strong>${correct.name}</strong></span>`;
     descHtml = correct.description;
   }
- 
+
   const cardFlash = fb ? (fb.correct ? ' flash-correct' : ' flash-wrong') : '';
   const choiceBtns = state.choices.map(id => {
     let cls = 'choice-btn';
@@ -557,19 +692,20 @@ function renderGame() {
          + `<span class="choice-short">${n.shortName}</span>`
          + `<span class="choice-name">${n.name}</span></button>`;
   }).join('');
- 
+
   const streakHtml = state.streak > 0 && !fb
     ? `<div class="streak-info">${state.streak >= 3 ? `🔥 ${state.streak} streak — ${mult.toFixed(1)}× multiplier!` : `${state.streak} in a row — keep going!`}</div>`
     : '';
- 
+
   return `
     <div class="screen game-screen">
       <div class="game-header">
         <div class="game-header-left">
-          <div class="level-label">${lv.emoji} ${lv.name}</div>
+          <div class="level-label">${lv.emoji} ${lv.name} · ${diff.name}</div>
           <div class="q-counter">${state.qIndex + 1} / ${lv.questionsPerRound}</div>
         </div>
         <div class="game-header-right">
+          <div class="lives-display" id="lives-display">${renderLivesInner()}</div>
           ${state.streak >= 3 ? `<div class="streak-badge">🔥 ×${mult.toFixed(1)}</div>` : ''}
           <div class="score-display">${state.score.toLocaleString()}</div>
         </div>
@@ -579,28 +715,33 @@ function renderGame() {
       <div class="notation-card${cardFlash}" id="notation-card">${buildStaffSVG(note)}</div>
       <div class="q-prompt" id="q-prompt">${promptHtml}</div>
       <div class="feedback-desc" id="feedback-desc">${descHtml}</div>
-      <div class="choices n${lv.choiceCount}">${choiceBtns}</div>
+      <div class="choices n${state.effectiveChoices}">${choiceBtns}</div>
       ${streakHtml}
       <div class="game-actions">
         <button class="btn btn-ghost" id="btn-reset-app">Reset App</button>
       </div>
+      ${renderFooter()}
     </div>`;
 }
  
 function renderResult() {
-  const { score, correctCount, maxStreak, levelId, isNewHigh } = state.result;
+  const { score, correctCount, maxStreak, levelId, diffId, isNewHigh, passingScore, mistakes, gameOver, questionsAnswered } = state.result;
   const lv = LEVELS.find(l => l.id === levelId);
+  const diff = DIFFICULTIES.find(d => d.id === diffId);
   const nextLv = LEVELS.find(l => l.id === levelId + 1);
   const total = lv.questionsPerRound;
-  const acc = Math.round((correctCount / total) * 100);
-  const passed = score >= lv.passingScore;
+  const acc = questionsAnswered > 0 ? Math.round((correctCount / questionsAnswered) * 100) : 0;
+  const passed = !gameOver && score >= lv.passingScore;
   const grade = acc >= 90 ? 'S' : acc >= 75 ? 'A' : acc >= 60 ? 'B' : acc >= 45 ? 'C' : 'D';
   const gradeColor = {S:'#f39c12',A:'#2ecc71',B:'#3498db',C:'#9b59b6',D:'#e74c3c'}[grade];
+  const headEmoji = gameOver ? '💀' : passed ? '🎉' : acc >= 50 ? '💪' : '😤';
+  const headText = gameOver ? 'Game Over!' : passed ? 'Round Complete!' : 'Keep Practising!';
   return `
     <div class="screen result-screen">
       <div>
-        <div class="result-emoji">${passed ? '🎉' : acc >= 50 ? '💪' : '😤'}</div>
-        <h2>${passed ? 'Round Complete!' : 'Keep Practising!'}</h2>
+        <div class="result-emoji">${headEmoji}</div>
+        <h2>${headText}</h2>
+        ${gameOver ? '<div class="game-over-banner">Out of lives!</div>' : ''}
         ${isNewHigh ? '<div class="new-high">🏆 New High Score!</div>' : ''}
       </div>
       <div>
@@ -610,34 +751,40 @@ function renderResult() {
       <div class="result-stats">
         <div class="stat-card"><div class="stat-grade" style="color:${gradeColor}">${grade}</div><div class="stat-label">Grade</div></div>
         <div class="stat-card"><div class="stat-val">${acc}%</div><div class="stat-label">Accuracy</div></div>
-        <div class="stat-card"><div class="stat-val">${correctCount}/${total}</div><div class="stat-label">Correct</div></div>
+        <div class="stat-card"><div class="stat-val">${correctCount}/${questionsAnswered}</div><div class="stat-label">Correct</div></div>
         <div class="stat-card"><div class="stat-val">🔥${maxStreak}</div><div class="stat-label">Streak</div></div>
       </div>
       ${passed && nextLv ? `<div class="unlock-banner">🔓 ${nextLv.name} unlocked!</div>` : ''}
-      ${!passed ? `<div class="pass-target">Score ${lv.passingScore.toLocaleString()} to unlock the next level (${score.toLocaleString()} / ${lv.passingScore.toLocaleString()})</div>` : ''}
+      ${!passed && !gameOver ? `<div class="pass-target">Score ${lv.passingScore.toLocaleString()} to unlock the next level (${score.toLocaleString()} / ${lv.passingScore.toLocaleString()})</div>` : ''}
       <div class="result-actions">
         ${passed && nextLv ? `<button class="btn btn-primary" id="btn-next">Next Level ${nextLv.emoji}</button>` : ''}
         <button class="btn btn-secondary" id="btn-replay">🔄 Play Again</button>
         <button class="btn btn-ghost" id="btn-menu">← Level Select</button>
         <button class="btn btn-ghost" id="btn-reset-app">Reset App</button>
       </div>
-      <div class="result-level-name">${lv.emoji} ${lv.name} — ${lv.subtitle}</div>
+      <div class="result-level-name">${lv.emoji} ${lv.name} · ${diff.name} — ${lv.subtitle}</div>
+      ${renderFooter()}
     </div>`;
 }
  
 // ─────────────────────────────────────────────
 // GAME ACTIONS
 // ─────────────────────────────────────────────
-function startGame(levelId) {
+function startGame(levelId, diffId) {
   clearTimers();
   const lv = LEVELS.find(l => l.id === levelId);
+  const diff = DIFFICULTIES.find(d => d.id === diffId) || DIFFICULTIES[0];
+  const effTime = Math.max(3, Math.floor(lv.timeLimit * diff.timeMult));
+  const effChoices = Math.min(lv.notes.length, lv.choiceCount + diff.choiceAdd);
   Object.assign(state, {
-    screen: 'game', level: lv,
+    screen: 'game', level: lv, difficulty: diff,
+    effectiveTime: effTime, effectiveChoices: effChoices,
     questions: generateQuestions(lv),
-    qIndex: 0, score: 0, streak: 0, maxStreak: 0, correctCount: 0, feedback: null,
+    qIndex: 0, score: 0, streak: 0, maxStreak: 0, correctCount: 0,
+    mistakes: 0, lives: diff.lives, gameOver: false, feedback: null,
   });
-  state.choices = generateChoices(state.questions[0], lv);
-  state.timeLeft = lv.timeLimit;
+  state.choices = generateChoices(state.questions[0], lv, effChoices);
+  state.timeLeft = effTime;
   render();
   startTimer();
 }
@@ -648,7 +795,7 @@ function startTimer() {
     state.timeLeft--;
     const bar = document.getElementById('timer-bar');
     const num = document.getElementById('timer-num');
-    if (bar) { bar.style.width = (state.timeLeft / state.level.timeLimit * 100) + '%'; bar.classList.toggle('warn', state.timeLeft <= 4); }
+    if (bar) { bar.style.width = (state.timeLeft / state.effectiveTime * 100) + '%'; bar.classList.toggle('warn', state.timeLeft <= 4); }
     if (num) { num.textContent = state.timeLeft + 's'; num.classList.toggle('warn', state.timeLeft <= 4); }
     if (state.timeLeft <= 0) { clearInterval(state.timerInterval); processAnswer(null); }
   }, 1000);
@@ -660,13 +807,25 @@ function processAnswer(selectedId) {
   const correctId = state.questions[state.qIndex];
   const correct = selectedId === correctId;
   const pts = correct ? calcPoints(state.timeLeft, state.level, state.streak) : 0;
- 
+
   state.feedback = { correct, selectedId, correctId, points: pts };
   state.score += pts;
   state.streak = correct ? state.streak + 1 : 0;
   state.maxStreak = Math.max(state.maxStreak, state.streak);
   if (correct) state.correctCount++;
- 
+
+  // Lives / mistakes
+  if (!correct) {
+    state.mistakes++;
+    const diff = state.difficulty;
+    if (diff.lives === 0 || state.mistakes > diff.lives) {
+      state.gameOver = true;
+    }
+    // Update lives display immediately
+    const livesEl = document.getElementById('lives-display');
+    if (livesEl) livesEl.innerHTML = renderLivesInner();
+  }
+
   // Patch DOM directly for snappiness
   const card   = document.getElementById('notation-card');
   const prompt = document.getElementById('q-prompt');
@@ -679,48 +838,83 @@ function processAnswer(selectedId) {
       : `<span class="bad">✗ That was the <strong>${n.name}</strong></span>`;
   }
   if (desc) desc.textContent = DRUM_NOTES[correctId].description;
- 
+
   document.querySelectorAll('.choice-btn').forEach(btn => {
     btn.disabled = true;
     const id = btn.dataset.choice;
     if (id === correctId) btn.classList.add('reveal-ok');
     else if (id === selectedId) btn.classList.add('reveal-bad');
   });
- 
+
   state.feedbackTimeout = setTimeout(advance, 1600);
+}
+
+function renderLivesInner() {
+  const diff = state.difficulty;
+  if (diff.lives === 0) return '<span style="color:var(--red)">☠️ No mistakes!</span>';
+  const remaining = Math.max(0, diff.lives - state.mistakes);
+  const lost = diff.lives - remaining;
+  return '❤️'.repeat(remaining) + '🖤'.repeat(lost);
 }
  
 function advance() {
+  // Check for game over (lives exhausted)
+  if (state.gameOver) {
+    goToResult();
+    return;
+  }
   const nextIndex = state.qIndex + 1;
   if (nextIndex >= state.level.questionsPerRound) {
-    const isNewHigh = saveHighScore(state.level.id, state.score);
-    state.result = { score: state.score, correctCount: state.correctCount, maxStreak: state.maxStreak, levelId: state.level.id, isNewHigh, passingScore: state.level.passingScore };
-    state.screen = 'result';
-    render();
+    goToResult();
   } else {
     state.qIndex = nextIndex;
     state.feedback = null;
-    state.choices = generateChoices(state.questions[nextIndex], state.level);
-    state.timeLeft = state.level.timeLimit;
+    state.choices = generateChoices(state.questions[nextIndex], state.level, state.effectiveChoices);
+    state.timeLeft = state.effectiveTime;
     render();
     startTimer();
   }
+}
+
+function goToResult() {
+  const isNewHigh = saveHighScore(state.level.id, state.difficulty.id, state.score);
+  state.result = {
+    score: state.score, correctCount: state.correctCount, maxStreak: state.maxStreak,
+    levelId: state.level.id, diffId: state.difficulty.id,
+    isNewHigh, passingScore: state.level.passingScore,
+    mistakes: state.mistakes, gameOver: state.gameOver,
+    questionsAnswered: state.qIndex + 1,
+  };
+  state.screen = 'result';
+  render();
 }
  
 // ─────────────────────────────────────────────
 // EVENT BINDING
 // ─────────────────────────────────────────────
 function bindEvents() {
+  // Start screen: level cards → difficulty picker
   document.querySelectorAll('.level-card:not(:disabled)').forEach(btn =>
-    btn.addEventListener('click', () => startGame(+btn.dataset.level)));
+    btn.addEventListener('click', () => {
+      state.selectedLevel = LEVELS.find(l => l.id === +btn.dataset.level);
+      state.screen = 'difficulty';
+      render();
+    }));
+  // Difficulty picker
+  document.querySelectorAll('.diff-card').forEach(btn =>
+    btn.addEventListener('click', () => startGame(state.selectedLevel.id, btn.dataset.diff)));
+  const diffBack = document.getElementById('btn-diff-back');
+  if (diffBack) diffBack.addEventListener('click', () => { state.screen = 'start'; render(); });
+  // Game screen: choices
   document.querySelectorAll('.choice-btn:not(:disabled)').forEach(btn =>
     btn.addEventListener('click', () => processAnswer(btn.dataset.choice)));
+  // Result screen
   const next   = document.getElementById('btn-next');
   const replay = document.getElementById('btn-replay');
   const menu   = document.getElementById('btn-menu');
   const reset  = document.getElementById('btn-reset-app');
-  if (next)   next.addEventListener('click',   () => startGame(state.level.id + 1));
-  if (replay) replay.addEventListener('click', () => startGame(state.level.id));
+  if (next)   next.addEventListener('click',   () => startGame(state.level.id + 1, state.difficulty.id));
+  if (replay) replay.addEventListener('click', () => startGame(state.level.id, state.difficulty.id));
   if (menu)   menu.addEventListener('click',   () => { state.screen = 'start'; render(); });
   if (reset)  reset.addEventListener('click',  resetApp);
 }

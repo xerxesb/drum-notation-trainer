@@ -69,6 +69,41 @@ body {
 .level-score { font-size: 12px; color: var(--green); }
 .level-score.no-score { color: var(--muted); }
 .credits { text-align: center; font-size: 11px; color: var(--muted); padding: 8px 0 0; }
+.legend-panel {
+  margin-top: 18px; background: var(--bg-card); border: 1.5px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+}
+.legend-panel summary {
+  list-style: none; cursor: pointer; padding: 14px 16px; font-weight: 700;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.legend-panel summary::-webkit-details-marker { display: none; }
+.legend-panel summary::after {
+  content: '▾'; color: var(--muted); font-size: 14px; transition: transform .15s ease;
+}
+.legend-panel:not([open]) summary::after { transform: rotate(-90deg); }
+.legend-copy {
+  padding: 0 16px 14px; color: var(--muted); font-size: 12px; line-height: 1.45;
+}
+.legend-grid {
+  display: grid; grid-template-columns: 1fr; gap: 10px; padding: 0 12px 12px;
+}
+.legend-item {
+  background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-sm); padding: 10px;
+}
+.legend-notation {
+  background: white; border-radius: 10px; padding: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.04);
+}
+.legend-notation .drum-staff { max-height: 84px; }
+.legend-name { margin-top: 8px; font-size: 14px; font-weight: 700; }
+.legend-short { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; }
+.legend-placement { margin-top: 2px; color: var(--accent); font-size: 12px; font-weight: 600; }
+.legend-desc {
+  margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 1.4;
+  line-clamp: 2;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
  
 /* ── Game Screen ── */
 .game-screen { gap: 10px; padding-top: max(12px, env(safe-area-inset-top)); }
@@ -117,6 +152,8 @@ body {
 .choice-btn.reveal-ok .choice-short, .choice-btn.reveal-bad .choice-short { color: inherit; }
 .choice-name { font-size: 14px; font-weight: 600; text-align: center; line-height: 1.2; }
 .streak-info { text-align: center; font-size: 13px; color: var(--orange); font-weight: 500; }
+.game-actions { display: flex; justify-content: center; }
+.game-actions .btn { max-width: 220px; padding: 12px 16px; font-size: 14px; }
  
 /* ── Result Screen ── */
 .result-screen { align-items: center; justify-content: center; gap: 20px; text-align: center; }
@@ -161,6 +198,10 @@ body {
   .result-score { font-size: 48px; }
   .result-emoji { font-size: 40px; }
 }
+
+@media (min-width:560px) {
+  .legend-grid { grid-template-columns: 1fr 1fr; }
+}
 </style>
 </head>
 <body>
@@ -173,22 +214,27 @@ body {
 // ─────────────────────────────────────────────
 // position: half-spaces from middle line (line 3).
 // Positive = above, negative = below.
-// stemDown: true = stem points down, false = stem points up.
+// stemDown is retained in note data for reference, but rendering now forces
+// all stems upward on the right side to match the preferred display style.
 // Staff lines at y = 38,50,62,74,86 (line 5 top → line 1 bottom).
 // MIDDLE_Y = 62 (line 3). getY(pos) = 62 - pos * 6.
  
 const DRUM_NOTES = {
-  bass_drum:    { id:'bass_drum',    name:'Bass Drum',       shortName:'BD', description:'Played with the right foot pedal — the low-end anchor of the groove.',                            position:-5, headType:'normal', stemDown:false },
-  snare:        { id:'snare',        name:'Snare Drum',      shortName:'SD', description:'The main backbeat — usually hit on beats 2 and 4.',                                                position: 0, headType:'normal', stemDown:true  },
-  hihat_closed: { id:'hihat_closed', name:'Closed Hi-Hat',   shortName:'HH', description:'Two cymbals pressed together, struck with a stick. Written as an X above the staff.',             position: 6, headType:'x',      stemDown:true  },
-  crash:        { id:'crash',        name:'Crash Cymbal',    shortName:'CC', description:'Accent cymbal hit hard for emphasis — often marks the start of a phrase.',                         position: 8, headType:'x',      stemDown:true  },
-  floor_tom:    { id:'floor_tom',    name:'Floor Tom',       shortName:'FT', description:'The deepest-pitched tom — stands on legs to your right.',                                         position:-3, headType:'normal', stemDown:false },
-  high_tom:     { id:'high_tom',     name:'High Tom',        shortName:'T1', description:'The highest-pitched rack tom, mounted above the bass drum.',                                       position: 3, headType:'normal', stemDown:false },
-  ride:         { id:'ride',         name:'Ride Cymbal',     shortName:'RC', description:'Large cymbal for steady rhythms — common in jazz and rock.',                                       position: 5, headType:'x',      stemDown:true  },
-  mid_tom:      { id:'mid_tom',      name:'Mid Tom',         shortName:'T2', description:'The middle rack tom — between high tom and floor tom in pitch.',                                   position: 1, headType:'normal', stemDown:false },
-  hihat_open:   { id:'hihat_open',   name:'Open Hi-Hat',     shortName:'OH', description:'Hi-hat cymbals slightly apart — a sustained "shhh" sound. Notated as a circled X (⊗).',          position: 6, headType:'open_x', stemDown:true  },
-  ghost_snare:  { id:'ghost_snare',  name:'Ghost Note',      shortName:'GN', description:'A very soft snare hit — written in parentheses. Adds subtle texture to grooves.',                 position: 0, headType:'ghost',  stemDown:true  },
-  hihat_foot:   { id:'hihat_foot',   name:'Hi-Hat Foot',     shortName:'HF', description:'Hi-hat closed with the left foot only — no stick. Appears below the staff.',                     position:-6, headType:'x',      stemDown:false },
+  // Staff mapping follows the app's current reference preferences:
+  // bass drum on bottom space, snare on third space, floor tom on second space,
+  // middle tom on top line, high tom and closed/open hi-hat in the space above top line,
+  // ride on the top line, crash above the hi-hat, and foot hi-hat below the staff.
+  bass_drum:    { id:'bass_drum',    name:'Bass Drum',       shortName:'BD', description:'Played with the right foot pedal — the low-end anchor of the groove. Usually notated on the bottom space.',              position:-3, headType:'normal', stemDown:false },
+  snare:        { id:'snare',        name:'Snare Drum',      shortName:'SD', description:'The main backbeat — usually hit on beats 2 and 4. Usually notated on the third space from the bottom.',              position: 1, headType:'normal', stemDown:true  },
+  hihat_closed: { id:'hihat_closed', name:'Closed Hi-Hat',   shortName:'HH', description:'Two cymbals pressed together, struck with a stick. Usually notated as an X in the space above the top line.',              position: 5, headType:'x',      stemDown:false },
+  crash:        { id:'crash',        name:'Crash Cymbal',    shortName:'CC', description:'Accent cymbal hit hard for emphasis — often marks the start of a phrase. In this app it is notated above the hi-hat, above the top line.', position: 6, headType:'x',      stemDown:false },
+  floor_tom:    { id:'floor_tom',    name:'Floor Tom',       shortName:'FT', description:'The deepest-pitched tom — stands on legs to your right. Usually notated on the second space from the bottom.',         position:-1, headType:'normal', stemDown:false },
+  high_tom:     { id:'high_tom',     name:'High Tom',        shortName:'T1', description:'The highest-pitched rack tom, mounted above the bass drum. In this app it is notated in the first space from the top of the staff.', position: 3, headType:'normal', stemDown:true  },
+  ride:         { id:'ride',         name:'Ride Cymbal',     shortName:'RC', description:'Large cymbal for steady rhythms — common in jazz and rock. In this app it is notated on the very top line of the staff.',     position: 4, headType:'x',      stemDown:false },
+  mid_tom:      { id:'mid_tom',      name:'Mid Tom',         shortName:'T2', description:'The middle rack tom — between high tom and floor tom in pitch. In this app it is notated on the second line from the top of the staff.', position: 2, headType:'normal', stemDown:true  },
+  hihat_open:   { id:'hihat_open',   name:'Open Hi-Hat',     shortName:'OH', description:'Hi-hat cymbals slightly apart — a sustained "shhh" sound. Usually written as an X in the hi-hat position with a small o above.', position: 5, headType:'open_x', stemDown:false, hasOpenMark:true },
+  ghost_snare:  { id:'ghost_snare',  name:'Ghost Note',      shortName:'GN', description:'A very soft snare hit — written in parentheses. Uses the same staff position as the snare drum.',                      position: 1, headType:'ghost',  stemDown:true  },
+  hihat_foot:   { id:'hihat_foot',   name:'Hi-Hat Foot',     shortName:'HF', description:'Hi-hat closed with the left foot only — no stick. Usually notated below the bottom line.',                              position:-5, headType:'x',      stemDown:false },
 };
  
 const LEVELS = [
@@ -206,6 +252,22 @@ const VISUAL_TWINS = {
   snare:'ghost_snare', ghost_snare:'snare',
   hihat_closed:'hihat_open', hihat_open:'hihat_closed',
 };
+
+const REFERENCE_LEGEND = [
+  { id:'bass_drum',    placement:'Bottom space' },
+  { id:'floor_tom',    placement:'Second space from bottom' },
+  { id:'snare',        placement:'Third space from bottom' },
+  { id:'mid_tom',      placement:'Second line from top' },
+  { id:'high_tom',     placement:'First space from top' },
+  { id:'hihat_closed', placement:'Space above top line' },
+  { id:'hihat_open',   placement:'Space above top line, o above X' },
+  { id:'ride',         placement:'Top line' },
+  { id:'crash',        placement:'Above hi-hat, above top line' },
+  { id:'ghost_snare',  placement:'Snare position, in parentheses' },
+  { id:'hihat_foot',   placement:'Below bottom line' },
+];
+
+const HIGH_SCORE_KEY = 'drumHighScores';
  
 function shuffle(arr) { return [...arr].sort(() => Math.random() - .5); }
  
@@ -236,14 +298,14 @@ function calcPoints(timeLeft, level, streak) {
 }
  
 function loadHighScores() {
-  try { return JSON.parse(localStorage.getItem('drumHighScores') || '{}'); } catch { return {}; }
+  try { return JSON.parse(localStorage.getItem(HIGH_SCORE_KEY) || '{}'); } catch { return {}; }
 }
  
 function saveHighScore(levelId, score) {
   const hs = loadHighScores();
   if (!hs[levelId] || score > hs[levelId]) {
     hs[levelId] = score;
-    try { localStorage.setItem('drumHighScores', JSON.stringify(hs)); } catch {}
+    try { localStorage.setItem(HIGH_SCORE_KEY, JSON.stringify(hs)); } catch {}
     return true;
   }
   return false;
@@ -282,13 +344,13 @@ function ledgerLines(pos) {
 }
  
 function buildStaffSVG(note) {
-  const { position, headType, stemDown } = note;
+  const { id, position, headType } = note;
   const ny = getY(position);
-  const isX = headType === 'x' || headType === 'open_x';
-  // Stem attaches to right side of oval for down-stems, left for up-stems.
-  // For X noteheads, stem comes from centre.
-  const stemX = isX ? NOTE_X : (stemDown ? NOTE_X + 6 : NOTE_X - 6);
-  const stemY2 = stemDown ? ny + 30 : ny - 30;
+  // User preference: all stems render on the right side and point upward.
+  const needsAdjustedCymbalStem = id === 'ride' || id === 'crash' || id.startsWith('hihat_');
+  const stemX = NOTE_X + (needsAdjustedCymbalStem ? 5 : 6);
+  const stemY1 = ny - (needsAdjustedCymbalStem ? 4 : 0);
+  const stemY2 = Math.max(6, ny - 30);
  
   let svg = '';
  
@@ -308,7 +370,7 @@ function buildStaffSVG(note) {
   }
  
   // Stem
-  svg += `<line x1="${stemX}" y1="${ny}" x2="${stemX}" y2="${stemY2}" stroke="black" stroke-width="1.5"/>`;
+  svg += `<line x1="${stemX}" y1="${stemY1}" x2="${stemX}" y2="${stemY2}" stroke="black" stroke-width="1.5"/>`;
  
   // Notehead
   if (headType === 'normal') {
@@ -318,18 +380,28 @@ function buildStaffSVG(note) {
     svg += `<line x1="${NOTE_X-s}" y1="${ny-s}" x2="${NOTE_X+s}" y2="${ny+s}" stroke="black" stroke-width="2" stroke-linecap="round"/>`;
     svg += `<line x1="${NOTE_X+s}" y1="${ny-s}" x2="${NOTE_X-s}" y2="${ny+s}" stroke="black" stroke-width="2" stroke-linecap="round"/>`;
   } else if (headType === 'open_x') {
-    // Circled X (⊗) for open hi-hat
-    const s = 4.5;
-    svg += `<circle cx="${NOTE_X}" cy="${ny}" r="7" fill="none" stroke="black" stroke-width="1.8"/>`;
-    svg += `<line x1="${NOTE_X-s}" y1="${ny-s}" x2="${NOTE_X+s}" y2="${ny+s}" stroke="black" stroke-width="1.8" stroke-linecap="round"/>`;
-    svg += `<line x1="${NOTE_X+s}" y1="${ny-s}" x2="${NOTE_X-s}" y2="${ny+s}" stroke="black" stroke-width="1.8" stroke-linecap="round"/>`;
+    const s = 5;
+    svg += `<line x1="${NOTE_X-s}" y1="${ny-s}" x2="${NOTE_X+s}" y2="${ny+s}" stroke="black" stroke-width="2" stroke-linecap="round"/>`;
+    svg += `<line x1="${NOTE_X+s}" y1="${ny-s}" x2="${NOTE_X-s}" y2="${ny+s}" stroke="black" stroke-width="2" stroke-linecap="round"/>`;
+  } else if (headType === 'diamond') {
+    svg += `<polygon points="${NOTE_X},${ny-7} ${NOTE_X+7},${ny} ${NOTE_X},${ny+7} ${NOTE_X-7},${ny}" fill="white" stroke="black" stroke-width="1.8"/>`;
   } else if (headType === 'ghost') {
     // Oval in parentheses for ghost note
     svg += `<text x="${NOTE_X-14}" y="${ny+5}" font-size="16" fill="black" font-family="Georgia,serif">(</text>`;
     svg += `<ellipse cx="${NOTE_X}" cy="${ny}" rx="7" ry="5" transform="rotate(-20,${NOTE_X},${ny})" fill="black"/>`;
     svg += `<text x="${NOTE_X+7}"  y="${ny+5}" font-size="16" fill="black" font-family="Georgia,serif">)</text>`;
   }
- 
+
+  if (note.hasClosedMark) {
+    const my = ny - 12;
+    svg += `<line x1="${NOTE_X-4}" y1="${my}" x2="${NOTE_X+4}" y2="${my}" stroke="black" stroke-width="1.6" stroke-linecap="round"/>`;
+    svg += `<line x1="${NOTE_X}" y1="${my-4}" x2="${NOTE_X}" y2="${my+4}" stroke="black" stroke-width="1.6" stroke-linecap="round"/>`;
+  }
+
+  if (note.hasOpenMark) {
+    svg += `<circle cx="${NOTE_X}" cy="${ny-13}" r="3.8" fill="white" stroke="black" stroke-width="1.4"/>`;
+  }
+
   return `<svg viewBox="0 0 320 120" class="drum-staff" aria-label="${note.name} drum notation">`
        + `<rect width="320" height="120" fill="white"/>${svg}</svg>`;
 }
@@ -360,6 +432,26 @@ function clearTimers() {
   state.timerInterval = null;
   state.feedbackTimeout = null;
 }
+
+function resetApp() {
+  clearTimers();
+  try { localStorage.removeItem(HIGH_SCORE_KEY); } catch {}
+  Object.assign(state, {
+    screen: 'start',
+    level: null,
+    questions: [],
+    qIndex: 0,
+    choices: [],
+    timeLeft: 0,
+    score: 0,
+    streak: 0,
+    maxStreak: 0,
+    correctCount: 0,
+    feedback: null,
+    result: null,
+  });
+  render();
+}
  
 // ─────────────────────────────────────────────
 // RENDER
@@ -371,10 +463,32 @@ function render() {
   if (state.screen === 'result') app.innerHTML = renderResult();
   bindEvents();
 }
+
+function renderReferenceLegend() {
+  const cards = REFERENCE_LEGEND.map(({ id, placement }) => {
+    const note = DRUM_NOTES[id];
+    return `
+      <article class="legend-item">
+        <div class="legend-notation">${buildStaffSVG(note)}</div>
+        <div class="legend-name">${note.name}</div>
+        <div class="legend-short">${note.shortName}</div>
+        <div class="legend-placement">${placement}</div>
+        <div class="legend-desc">${note.description}</div>
+      </article>`;
+  }).join('');
+
+  return `
+    <details class="legend-panel" open>
+      <summary>Reference Legend</summary>
+      <div class="legend-copy">This legend uses the same renderer as the quiz cards, so the symbols here should match exactly what appears during play.</div>
+      <div class="legend-grid">${cards}</div>
+    </details>`;
+}
  
 function renderStart() {
   const hs = loadHighScores();
   const unlocked = getUnlockedLevel(hs);
+  const showReset = Object.keys(hs).length > 0;
   const cards = LEVELS.map(lv => {
     const isLocked = lv.id > unlocked;
     const score = hs[lv.id];
@@ -407,6 +521,8 @@ function renderStart() {
         <p class="tagline">Read the score. Nail the beat.</p>
       </div>
       <div class="levels-list">${cards}</div>
+      ${renderReferenceLegend()}
+      ${showReset ? '<div class="game-actions"><button class="btn btn-ghost" id="btn-reset-app">Reset App</button></div>' : ''}
       <p class="credits">Tap a level to start · Scores saved locally</p>
     </div>`;
 }
@@ -465,6 +581,9 @@ function renderGame() {
       <div class="feedback-desc" id="feedback-desc">${descHtml}</div>
       <div class="choices n${lv.choiceCount}">${choiceBtns}</div>
       ${streakHtml}
+      <div class="game-actions">
+        <button class="btn btn-ghost" id="btn-reset-app">Reset App</button>
+      </div>
     </div>`;
 }
  
@@ -500,6 +619,7 @@ function renderResult() {
         ${passed && nextLv ? `<button class="btn btn-primary" id="btn-next">Next Level ${nextLv.emoji}</button>` : ''}
         <button class="btn btn-secondary" id="btn-replay">🔄 Play Again</button>
         <button class="btn btn-ghost" id="btn-menu">← Level Select</button>
+        <button class="btn btn-ghost" id="btn-reset-app">Reset App</button>
       </div>
       <div class="result-level-name">${lv.emoji} ${lv.name} — ${lv.subtitle}</div>
     </div>`;
@@ -598,9 +718,11 @@ function bindEvents() {
   const next   = document.getElementById('btn-next');
   const replay = document.getElementById('btn-replay');
   const menu   = document.getElementById('btn-menu');
+  const reset  = document.getElementById('btn-reset-app');
   if (next)   next.addEventListener('click',   () => startGame(state.level.id + 1));
   if (replay) replay.addEventListener('click', () => startGame(state.level.id));
   if (menu)   menu.addEventListener('click',   () => { state.screen = 'start'; render(); });
+  if (reset)  reset.addEventListener('click',  resetApp);
 }
  
 // ─────────────────────────────────────────────

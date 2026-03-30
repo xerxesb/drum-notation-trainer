@@ -791,13 +791,32 @@ function startGame(levelId, diffId) {
  
 function startTimer() {
   clearInterval(state.timerInterval);
+  // Kick off the first bar transition immediately so the CSS animation
+  // stays in sync with the JS countdown (the 1s CSS transition completes
+  // exactly when the next interval tick fires).
+  requestAnimationFrame(() => {
+    const bar = document.getElementById('timer-bar');
+    if (bar) {
+      const next = (state.timeLeft - 1) / state.effectiveTime * 100;
+      bar.style.width = Math.max(0, next) + '%';
+      bar.classList.toggle('warn', state.timeLeft - 1 <= 4);
+    }
+  });
   state.timerInterval = setInterval(() => {
     state.timeLeft--;
     const bar = document.getElementById('timer-bar');
     const num = document.getElementById('timer-num');
-    if (bar) { bar.style.width = (state.timeLeft / state.effectiveTime * 100) + '%'; bar.classList.toggle('warn', state.timeLeft <= 4); }
     if (num) { num.textContent = state.timeLeft + 's'; num.classList.toggle('warn', state.timeLeft <= 4); }
-    if (state.timeLeft <= 0) { clearInterval(state.timerInterval); processAnswer(null); }
+    if (state.timeLeft <= 0) {
+      clearInterval(state.timerInterval);
+      processAnswer(null);
+    } else if (bar) {
+      // Set bar to the *next* tick's value so the 1s CSS transition
+      // finishes right as the next interval fires.
+      const next = (state.timeLeft - 1) / state.effectiveTime * 100;
+      bar.style.width = Math.max(0, next) + '%';
+      bar.classList.toggle('warn', state.timeLeft - 1 <= 4);
+    }
   }, 1000);
 }
  

@@ -4,6 +4,10 @@
 
 Drum Notation Trainer — a single-file web app (`index.html`) for learning to read drum notation. It is a flashcard-style game with 4 progressive difficulty levels, timed questions, streak multipliers, and localStorage high-score persistence.
 
+## Git Workflow
+
+This is a private project. Always push directly to `main` — do not create pull requests or feature branches. After committing, push straight to origin.
+
 ## Repository Layout
 
 ```
@@ -94,6 +98,14 @@ Positive positions are above the middle line; negative positions are below.
 | Closed Hi-Hat | +6 | × | down | — |
 | Open Hi-Hat | +6 | × | down | o |
 | Crash Cymbal | +7 | × | down | > |
+
+## Versioning
+
+The app displays a version identifier in the footer via the `APP_VERSION` constant near the top of the `<script>` block.
+
+- Format: `0.<N>` where `<N>` is the total commit count on the branch being deployed.
+- **Every commit that changes `index.html` must bump `APP_VERSION`**. Before committing, run `git rev-list --count HEAD` and set the constant to `0.<count + 1>` (since the new commit will add one).
+- The version is shown in the footer as a subtle `v0.X` label.
 
 ## Testing Checklist (manual)
 

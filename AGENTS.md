@@ -95,6 +95,14 @@ Positive positions are above the middle line; negative positions are below.
 | Open Hi-Hat | +6 | × | down | o |
 | Crash Cymbal | +7 | × | down | > |
 
+## Versioning
+
+The app displays a version identifier in the footer via the `APP_VERSION` constant near the top of the `<script>` block.
+
+- Format: `0.<N>` where `<N>` is the total commit count on the branch being deployed.
+- **Every commit that changes `index.html` must bump `APP_VERSION`**. Before committing, run `git rev-list --count HEAD` and set the constant to `0.<count + 1>` (since the new commit will add one).
+- The version is shown in the footer as a subtle `v0.X` label.
+
 ## Testing Checklist (manual)
 
 - [ ] All 4 levels are playable start-to-finish

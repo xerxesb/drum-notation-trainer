@@ -119,6 +119,11 @@ body {
 .app-footer-copy {
   letter-spacing: .2px;
 }
+.app-footer-version {
+  margin-top: 4px;
+  font-size: 10px;
+  opacity: 0.5;
+}
  
 /* ── Difficulty Picker ── */
 .diff-screen { align-items: center; justify-content: center; gap: 20px; text-align: center; }
@@ -575,11 +580,14 @@ function renderReferenceLegend() {
     </details>`;
 }
 
+const APP_VERSION = '0.12';
+
 function renderFooter() {
   return `
     <footer class="app-footer" aria-label="Author and copyright">
       <div class="app-footer-author">Author: Xerxes Battiwalla</div>
       <div class="app-footer-copy">&copy; 2026 Xerxes Battiwalla. All rights reserved.</div>
+      <div class="app-footer-version">v${APP_VERSION}</div>
     </footer>`;
 }
  

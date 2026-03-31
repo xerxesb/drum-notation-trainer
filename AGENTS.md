@@ -4,6 +4,10 @@
 
 Drum Notation Trainer — a single-file web app (`index.html`) for learning to read drum notation. It is a flashcard-style game with 4 progressive difficulty levels, timed questions, streak multipliers, and localStorage high-score persistence.
 
+## Git Workflow
+
+This is a private project. Always push directly to `main` — do not create pull requests or feature branches. After committing, push straight to origin.
+
 ## Repository Layout
 
 ```

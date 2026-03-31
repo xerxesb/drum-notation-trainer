@@ -280,15 +280,15 @@ const DRUM_NOTES = {
  
 const LEVELS = [
   { id:1, name:'Beginner',     emoji:'🥁', subtitle:'The Core Three',    description:'Bass drum, snare, and hi-hat — the building blocks of every beat.',                   notes:['bass_drum','snare','hihat_closed'],                                                                          choiceCount:3, timeLimit:15, questionsPerRound:10, pointsPerCorrect:100, passingScore:600  },
-  { id:2, name:'Intermediate', emoji:'🎵', subtitle:'Expand the Kit',     description:'Add crash cymbal, floor tom, and high tom to your vocabulary.',                       notes:['bass_drum','snare','hihat_closed','crash','floor_tom','high_tom'],                                           choiceCount:4, timeLimit:12, questionsPerRound:12, pointsPerCorrect:150, passingScore:1100 },
-  { id:3, name:'Advanced',     emoji:'⚡', subtitle:'Full Kit',           description:'Ride cymbal, mid tom, and open hi-hat join the mix.',                                 notes:['bass_drum','snare','hihat_closed','crash','floor_tom','high_tom','ride','mid_tom','hihat_open'],            choiceCount:5, timeLimit:10, questionsPerRound:15, pointsPerCorrect:200, passingScore:2000 },
-  { id:4, name:'Expert',       emoji:'🔥', subtitle:'Master the Details', description:'Ghost notes and hi-hat foot — the subtle elements that make grooves come alive.',    notes:['bass_drum','snare','hihat_closed','crash','floor_tom','high_tom','ride','mid_tom','hihat_open','ghost_snare','hihat_foot'], choiceCount:6, timeLimit:8, questionsPerRound:15, pointsPerCorrect:250, passingScore:2800 },
+  { id:2, name:'Intermediate', emoji:'🎵', subtitle:'Expand the Kit',     description:'Add crash cymbal, floor tom, and high tom to your vocabulary.',                       notes:['bass_drum','snare','hihat_closed','crash','floor_tom','high_tom'],                                           choiceCount:4, timeLimit:10, questionsPerRound:12, pointsPerCorrect:150, passingScore:1500 },
+  { id:3, name:'Advanced',     emoji:'⚡', subtitle:'Full Kit',           description:'Ride cymbal, mid tom, and open hi-hat join the mix.',                                 notes:['bass_drum','snare','hihat_closed','crash','floor_tom','high_tom','ride','mid_tom','hihat_open'],            choiceCount:5, timeLimit:8,  questionsPerRound:15, pointsPerCorrect:200, passingScore:3500 },
+  { id:4, name:'Expert',       emoji:'🔥', subtitle:'Master the Details', description:'Ghost notes and hi-hat foot — the subtle elements that make grooves come alive.',    notes:['bass_drum','snare','hihat_closed','crash','floor_tom','high_tom','ride','mid_tom','hihat_open','ghost_snare','hihat_foot'], choiceCount:6, timeLimit:6,  questionsPerRound:18, pointsPerCorrect:250, passingScore:4500 },
 ];
  
 const DIFFICULTIES = [
   { id:'easy',   name:'Easy',   emoji:'😊', timeMult:1.0, choiceAdd:0, lives:3, description:'3 lives · Full time' },
   { id:'medium', name:'Medium', emoji:'😤', timeMult:0.7, choiceAdd:1, lives:2, description:'2 lives · Less time · +1 choice' },
-  { id:'hard',   name:'Hard',   emoji:'🔥', timeMult:0.5, choiceAdd:2, lives:0, description:'0 lives · Half time · +2 choices' },
+  { id:'hard',   name:'Hard',   emoji:'🔥', timeMult:0.4, choiceAdd:3, lives:0, description:'0 lives · 40% time · +3 choices' },
 ];
 
 // ─────────────────────────────────────────────
